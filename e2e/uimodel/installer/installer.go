@@ -1,6 +1,7 @@
 package installer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -84,7 +85,7 @@ func (i *Installer) InitOnPremInstallation(domainName string) {
 }
 
 // PrepareOnPremNodes sets parameters for each found node
-func (i *Installer) PrepareOnPremNodes(dockerDevice string) {
+func (i *Installer) PrepareOnPremNodes(ctx context.Context, dockerDevice string) {
 	onpremProfiles := i.GetOnPremProfiles()
 	Expect(len(onpremProfiles)).NotTo(Equal(0))
 	numInstallNodes := 0
@@ -104,7 +105,7 @@ func (i *Installer) PrepareOnPremNodes(dockerDevice string) {
 	index := 0
 	for _, p := range onpremProfiles {
 		nodesForProfile := allocatedNodes[index : index+p.Count]
-		framework.RunAgentCommand(p.Command, nodesForProfile...)
+		framework.RunAgentCommand(ctx, p.Command, nodesForProfile...)
 		index = index + p.Count
 	}
 

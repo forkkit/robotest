@@ -25,9 +25,6 @@ func startWizard(provisioner Provisioner, installer Node) (cluster *wizardCluste
 	var session *ssh.Session
 	err = wait.Retry(context.TODO(), func() error {
 		session, err = installer.Connect()
-		if err != nil {
-			log.Debug(trace.DebugReport(err))
-		}
 		return trace.Wrap(err)
 	})
 	if err != nil {
@@ -39,19 +36,17 @@ func startWizard(provisioner Provisioner, installer Node) (cluster *wizardCluste
 		}
 		errClose := session.Close()
 		if errClose != nil {
-			log.Errorf("failed to close wizard SSH session: %v", errClose)
+			log.Warnf("Failed to close wizard SSH session: %v.", errClose)
 		}
 	}()
 
-	var stdin io.WriteCloser
-	stdin, err = session.StdinPipe()
+	stdin, err := session.StdinPipe()
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
 	defer stdin.Close()
 
-	var stdout io.Reader
-	stdout, err = session.StdoutPipe()
+	stdout, err := session.StdoutPipe()
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
@@ -59,28 +54,20 @@ func startWizard(provisioner Provisioner, installer Node) (cluster *wizardCluste
 	reader, writer := io.Pipe()
 	go func() {
 		_, err := io.Copy(io.MultiWriter(os.Stdout, writer), stdout)
-		if err != nil {
-			log.Errorf("failed to read from remote stdout: %v", err)
+		if err != nil && err != io.EOF {
+			log.Warnf("Failed to read from remote stdout: %v.", err)
 		}
-		reader.Close()
 		writer.Close()
 	}()
-	defer func() {
-		if err != nil {
-			reader.Close()
-			writer.Close()
-		}
-	}()
 
-	var stderr io.Reader
-	stderr, err = session.StderrPipe()
+	stderr, err := session.StderrPipe()
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
 	go func() {
 		_, err := io.Copy(os.Stderr, stderr)
-		if err != nil {
-			log.Errorf("failed to read from remote stderr: %v", err)
+		if err != nil && err != io.EOF {
+			log.Warnf("Failed to read from remote stderr: %v.", err)
 		}
 	}()
 
@@ -99,12 +86,10 @@ func startWizard(provisioner Provisioner, installer Node) (cluster *wizardCluste
 	}
 
 	if installerURL == nil {
-		err = trace.NotFound("failed to fetch installer URL. Check installer output for details.")
-		return nil, err
+		return nil, trace.NotFound("failed to fetch installer URL. Check installer output for details")
 	}
 
-	var application *loc.Locator
-	application, err = extractPackage(*installerURL)
+	application, err := extractPackage(*installerURL)
 	if err != nil {
 		return nil, trace.Wrap(err)
 	}
@@ -112,9 +97,9 @@ func startWizard(provisioner Provisioner, installer Node) (cluster *wizardCluste
 	// Discard all stdout content after the necessary wizard details have been obtained
 	go func() {
 		_, _ = io.Copy(ioutil.Discard, reader)
+		reader.Close()
 	}()
 
-	// TODO: make sure that all io.Copy goroutines shutdown in Close
 	return &wizardCluster{
 		provisioner:  provisioner,
 		application:  *application,

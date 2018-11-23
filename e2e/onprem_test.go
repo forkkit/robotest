@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -33,7 +34,7 @@ var _ = framework.RoboDescribe("Onprem Integration Test", func() {
 
 		By("selecting a flavor and allocating the nodes")
 		installer.SelectFlavorByLabel(ctx.FlavorLabel)
-		installer.PrepareOnPremNodes(ctx.Onprem.DockerDevice)
+		installer.PrepareOnPremNodes(context.TODO(), ctx.Onprem.DockerDevice)
 
 		By("starting an installation")
 		installer.StartInstallation()
@@ -84,7 +85,7 @@ var _ = framework.RoboDescribe("Onprem Integration Test", func() {
 		ui := uimodel.InitWithUser(f.Page, framework.SiteURL())
 		site := ui.GoToSite(ctx.ClusterName)
 		siteServerPage := site.GoToServers()
-		newSiteServer := siteServerPage.AddOnPremServer()
+		newSiteServer := siteServerPage.AddOnPremServer(context.TODO())
 		siteServerPage.DeleteServer(newSiteServer)
 	})
 

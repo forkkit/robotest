@@ -1,6 +1,7 @@
 package site
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -71,7 +72,7 @@ func (p *ServerPage) GetAgentServers() []agent.AgentServer {
 }
 
 // AddOnPremServer adds onprem servers
-func (p *ServerPage) AddOnPremServer() SiteServer {
+func (p *ServerPage) AddOnPremServer(ctx context.Context) SiteServer {
 	log.Infof("trying to add onprem server")
 	page := p.site.page
 	config := framework.TestContext.Onprem
@@ -94,13 +95,12 @@ func (p *ServerPage) AddOnPremServer() SiteServer {
 
 	nodes, err := framework.Cluster.Provisioner().NodePool().Allocate(1)
 	Expect(err).NotTo(HaveOccurred(), "should allocate a new node")
-	framework.RunAgentCommand(agentCommand, nodes[0])
+	framework.RunAgentCommand(ctx, agentCommand, nodes[0])
 
 	Eventually(p.GetAgentServers, defaults.AgentServerTimeout).Should(HaveLen(1), "should wait for the agent server")
 	provisioner := framework.Cluster.Provisioner()
-	ctx := framework.TestContext
 	// TODO: store private IPs for terraform in state to avoid this check
-	if ctx.Provisioner.Type != "terraform" {
+	if framework.TestContext.Provisioner.Type != "terraform" {
 		agentServers := p.GetAgentServers()
 		for _, s := range agentServers {
 			s.SetIPByInfra(provisioner)

@@ -154,7 +154,7 @@ var defaultLogger = log.New()
 
 // Distribute executes the specified command on given nodes
 // and waits for execution to complete before returning
-func Distribute(command string, nodes ...Node) error {
+func Distribute(ctx context.Context, command string, nodes ...Node) error {
 	log.Infof("running %q on %v", command, nodes)
 	errCh := make(chan error, len(nodes))
 	wg := sync.WaitGroup{}
@@ -162,7 +162,7 @@ func Distribute(command string, nodes ...Node) error {
 	for _, node := range nodes {
 		go func(node Node) {
 			log.Infof("running on %v", node)
-			errCh <- Run(node, command, os.Stderr)
+			errCh <- Run(ctx, node, command, os.Stderr)
 			wg.Done()
 		}(node)
 	}
@@ -179,9 +179,9 @@ func Distribute(command string, nodes ...Node) error {
 
 // Run executes the specified command on node and streams
 // session's Stdout/Stderr to the specified w
-func Run(node Node, command string, w io.Writer) (err error) {
+func Run(ctx context.Context, node Node, command string, w io.Writer) (err error) {
 	var session *ssh.Session
-	err = wait.Retry(context.TODO(), func() error {
+	err = wait.Retry(ctx, func() error {
 		session, err = node.Connect()
 		if err != nil {
 			log.Debug(trace.DebugReport(err))
@@ -195,6 +195,6 @@ func Run(node Node, command string, w io.Writer) (err error) {
 }
 
 // ScpText copies remoteFile from specified node into localFile
-func ScpText(node Node, remoteFile string, localFile io.Writer) error {
-	return Run(node, fmt.Sprintf("cat %v", remoteFile), localFile)
+func ScpText(ctx context.Context, node Node, remoteFile string, localFile io.Writer) error {
+	return Run(ctx, node, fmt.Sprintf("cat %v", remoteFile), localFile)
 }

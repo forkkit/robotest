@@ -78,7 +78,7 @@ func UpdateApplicationWithInstaller() {
 }
 
 // BackupApplication implements test for backup hook
-func BackupApplication() {
+func BackupApplication(ctx context.Context) {
 	Expect(ConnectToOpsCenter(TestContext.OpsCenterURL, TestContext.ServiceLogin)).To(Succeed())
 	Expect(TestContext.Application.Locator).NotTo(BeNil(), "expected a valid application package")
 	Expect(TestContext.Extensions.BackupConfig.Addr).NotTo(BeNil(), "expect valid node address for backup operation")
@@ -87,13 +87,13 @@ func BackupApplication() {
 	backupNode, err := Cluster.Provisioner().NodePool().Node(TestContext.Extensions.BackupConfig.Addr)
 	Expect(err).NotTo(HaveOccurred(),
 		"node with address %v not found in config state", TestContext.Extensions.BackupConfig.Addr)
-	Distribute(fmt.Sprintf("sudo gravity planet enter -- --notty /usr/bin/gravity -- system backup %s %s",
+	Distribute(ctx, fmt.Sprintf("sudo gravity planet enter -- --notty /usr/bin/gravity -- system backup %s %s",
 		TestContext.Application.String(), TestContext.Extensions.BackupConfig.Path), backupNode)
 	UpdateBackupState()
 }
 
 // RestoreApplication implements test for restore hook
-func RestoreApplication() {
+func RestoreApplication(ctx context.Context) {
 	Expect(ConnectToOpsCenter(TestContext.OpsCenterURL, TestContext.ServiceLogin)).To(Succeed())
 	Expect(TestContext.Application.Locator).NotTo(BeNil(), "expected a valid application package")
 	Expect(testState.BackupState.Addr).NotTo(BeNil(), "expect valid node address for restore operation")
@@ -102,7 +102,8 @@ func RestoreApplication() {
 	backupNode, err := Cluster.Provisioner().NodePool().Node(testState.BackupState.Addr)
 	Expect(err).NotTo(HaveOccurred(),
 		"node with address %v not found in config state", testState.BackupState.Addr)
-	Distribute(fmt.Sprintf("sudo gravity planet enter -- --notty /usr/bin/gravity -- system restore %s %s", TestContext.Application.String(), testState.BackupState.Path), backupNode)
+	Distribute(ctx, fmt.Sprintf("sudo gravity planet enter -- --notty /usr/bin/gravity -- system restore %s %s",
+		TestContext.Application.String(), testState.BackupState.Path), backupNode)
 }
 
 // ConnectToOpsCenter connects to the Ops Center specified with opsCenterURL using

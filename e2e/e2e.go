@@ -1,6 +1,7 @@
 package e2e
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -42,7 +43,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 }, func() {
 	// Run only on ginkgo node 1
 	if framework.TestContext.DumpCore {
-		framework.CoreDump()
+		framework.CoreDump(context.TODO())
 		return
 	}
 
@@ -52,7 +53,7 @@ var _ = ginkgo.SynchronizedAfterSuite(func() {
 	framework.CloseDriver()
 	if framework.TestContext.Teardown {
 		if framework.TestContext.ReportDir != "" {
-			framework.CoreDump()
+			framework.CoreDump(context.TODO())
 		}
 		framework.Destroy()
 	}

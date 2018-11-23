@@ -20,10 +20,10 @@ func UploadUpdate(ctx context.Context, provisioner Provisioner, installer Node) 
 		}
 		return trace.Wrap(err)
 	})
-	if err != nil {
+	if err != nil && session != nil {
 		errClose := session.Close()
 		if errClose != nil {
-			log.Errorf("Failed to close upload update SSH session: %v.", errClose)
+			log.Warnf("Failed to close upload update SSH session: %v.", errClose)
 		}
 		return trace.Wrap(err)
 	}
