@@ -643,11 +643,11 @@ func (g *gravity) PartitionNetwork(ctx context.Context) error {
 		return trace.Wrap(err)
 	}
 	for _, node := range status.Cluster.Nodes {
-		cmdDropInput := fmt.Sprintf("iptables -I INPUT -s %s -j DROP", node.Addr)
+		cmdDropInput := fmt.Sprintf("sudo iptables -I INPUT -s %s -j DROP", node.Addr)
 		if err := sshutils.Run(ctx, g.Client(), g.Logger(), cmdDropInput, nil); err != nil {
 			return trace.Wrap(err, cmdDropInput)
 		}
-		cmdDropOutput := fmt.Sprintf("iptables -I OUTPUT -s %s -j DROP", node.Addr)
+		cmdDropOutput := fmt.Sprintf("sudo iptables -I OUTPUT -s %s -j DROP", node.Addr)
 		if err := sshutils.Run(ctx, g.Client(), g.Logger(), cmdDropOutput, nil); err != nil {
 			return trace.Wrap(err, cmdDropOutput)
 		}
@@ -665,11 +665,11 @@ func (g *gravity) UnpartitionNetwork(ctx context.Context) error {
 	}
 	for _, node := range status.Cluster.Nodes {
 		// TODO: look into using existing libs for manipulating network traffic.
-		cmdAcceptInput := fmt.Sprintf("iptables -D INPUT -s %s -j DROP", node.Addr)
+		cmdAcceptInput := fmt.Sprintf("sudo iptables -D INPUT -s %s -j DROP", node.Addr)
 		if err := sshutils.Run(ctx, g.Client(), g.Logger(), cmdAcceptInput, nil); err != nil {
 			return trace.Wrap(err, cmdAcceptInput)
 		}
-		cmdAcceptOutput := fmt.Sprintf("iptables -D OUTPUT -s %s -j DROP", node.Addr)
+		cmdAcceptOutput := fmt.Sprintf("sudo iptables -D OUTPUT -s %s -j DROP", node.Addr)
 		if err := sshutils.Run(ctx, g.Client(), g.Logger(), cmdAcceptOutput, nil); err != nil {
 			return trace.Wrap(err, cmdAcceptOutput)
 		}
