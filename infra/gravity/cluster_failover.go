@@ -32,6 +32,10 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 	ctx, cancel := context.WithTimeout(c.ctx, c.timeouts.Status)
 	defer cancel()
 
+	c.Logger().WithFields(logrus.Fields{
+		"nodes": nodes,
+	}).Info("Current cluster state")
+
 	oldLeader, err := getLeaderNode(ctx, nodes)
 	if err != nil {
 		return trace.Wrap(err)
@@ -65,7 +69,7 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 	err = retry.Do(ctx, func() error {
 		newLeader, err = getLeaderNode(ctx, partitions[1])
 		if err != nil || newLeader == oldLeader {
-			return wait.Continue("new leader not yet elected", err)
+			return wait.Continue("new leader not yet elected")
 		}
 		return nil
 	})
