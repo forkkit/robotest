@@ -44,7 +44,7 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 		"oldLeader": oldLeader,
 	}).Info("Leader found")
 
-	if err := oldLeader.PartitionNetwork(ctx); err != nil {
+	if err := oldLeader.PartitionNetwork(ctx, nodes); err != nil {
 		return trace.Wrap(err, "failed to create network partition")
 	}
 
@@ -56,6 +56,7 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 			break
 		}
 	}
+
 	c.Logger().WithFields(logrus.Fields{
 		"partitions": partitions,
 	}).Info("Created network partitions")
@@ -86,7 +87,7 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 		return trace.Wrap(err, "cluster partition is nonoperational")
 	}
 
-	if err := oldLeader.UnpartitionNetwork(ctx); err != nil {
+	if err := oldLeader.UnpartitionNetwork(ctx, nodes); err != nil {
 		return trace.Wrap(err, "failed to remove network partition")
 	}
 	c.Logger().Info("Removed network partition")
