@@ -641,10 +641,18 @@ func (g *gravity) PartitionNetwork(ctx context.Context, cluster []Gravity) error
 	for _, node := range cluster {
 		if node != g {
 			cmdDropInput := fmt.Sprintf("sudo iptables -I INPUT -s %s -j DROP", node.Node().PrivateAddr())
+			g.Logger().WithFields(logrus.Fields{
+				"cmd":  cmdDropInput,
+				"addr": node.Node().PrivateAddr(),
+			}).Info("Dropping input")
 			if err := sshutils.Run(ctx, g.Client(), g.Logger(), cmdDropInput, nil); err != nil {
 				return trace.Wrap(err, cmdDropInput)
 			}
 			cmdDropOutput := fmt.Sprintf("sudo iptables -I OUTPUT -s %s -j DROP", node.Node().PrivateAddr())
+			g.Logger().WithFields(logrus.Fields{
+				"cmd":  cmdDropOutput,
+				"addr": node.Node().PrivateAddr(),
+			}).Info("Dropping output")
 			if err := sshutils.Run(ctx, g.Client(), g.Logger(), cmdDropOutput, nil); err != nil {
 				return trace.Wrap(err, cmdDropOutput)
 			}
