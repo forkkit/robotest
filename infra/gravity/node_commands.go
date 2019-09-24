@@ -661,6 +661,11 @@ func (g *gravity) PartitionNetwork(ctx context.Context, cluster []Gravity) error
 // the cluster. If a network partition does not already exist, this will have
 // no effect.
 func (g *gravity) UnpartitionNetwork(ctx context.Context, cluster []Gravity) error {
+
+	g.Logger().WithFields(logrus.Fields{
+		"cluster": cluster,
+		"g":       g,
+	}).Info("UnpartitionNetwork")
 	for _, node := range cluster {
 		if node != g {
 			cmdListRules := "sudo iptables -S"

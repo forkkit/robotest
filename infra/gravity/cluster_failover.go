@@ -32,52 +32,34 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 	ctx, cancel := context.WithTimeout(c.ctx, c.timeouts.Status)
 	defer cancel()
 
-	c.Logger().WithFields(logrus.Fields{
-		"nodes": nodes,
-	}).Info("Current cluster state")
-
 	oldLeader, err := getLeaderNode(ctx, nodes)
 	if err != nil {
 		return trace.Wrap(err)
 	}
 	c.Logger().WithFields(logrus.Fields{
-		"oldLeader": oldLeader,
-	}).Info("Leader found")
+		"leader": oldLeader,
+	}).Info("Initial leader node")
 
 	if err := oldLeader.PartitionNetwork(ctx, nodes); err != nil {
 		return trace.Wrap(err, "failed to create network partition")
 	}
 
-	partitions := make([][]Gravity, 2)
-	partitions[0] = []Gravity{oldLeader}
-	for i, node := range nodes {
-		if node == oldLeader {
-			partitions[1] = append(nodes[:i], nodes[i+1:]...)
-			break
-		}
-	}
-
+	partitions := getPartitions(nodes, oldLeader)
 	c.Logger().WithFields(logrus.Fields{
 		"partitions": partitions,
-	}).Info("Created network partitions")
+	}).Info("Created network partition")
 
 	retry := wait.Retryer{
 		Attempts: leaderElectionRetries,
 		Delay:    leaderElectionWait,
 	}
-
-	var newLeader Gravity
-	err = retry.Do(ctx, func() error {
-		newLeader, err = getLeaderNode(ctx, partitions[1])
-		if err != nil || newLeader == oldLeader {
-			return wait.Continue("new leader not yet elected")
-		}
-		return nil
-	})
-	if err != nil {
+	if err = retry.Do(ctx, retryNewLeaderElected(c, partitions[1], oldLeader)); err != nil {
 		return trace.Wrap(err, "new leader was not elected")
 	}
-
+	newLeader, err := getLeaderNode(ctx, partitions[1])
+	if err != nil {
+		return trace.Wrap(err)
+	}
 	c.Logger().WithFields(logrus.Fields{
 		"oldLeader": oldLeader,
 		"newLeader": newLeader,
@@ -86,6 +68,10 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 	if err := c.Status(partitions[1]); err != nil {
 		return trace.Wrap(err, "cluster partition is nonoperational")
 	}
+
+	c.Logger().WithFields(logrus.Fields{
+		"nodes": nodes,
+	}).Infof("Current cluster")
 
 	if err := oldLeader.UnpartitionNetwork(ctx, nodes); err != nil {
 		return trace.Wrap(err, "failed to remove network partition")
@@ -96,9 +82,36 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 		Attempts: activeStatusRetries,
 		Delay:    activeStatusWait,
 	}
+	err = retry.Do(ctx, retryClusterIsActive(c, oldLeader, newLeader))
 
-	err = retry.Do(ctx, func() error {
-		status := make([]*GravityStatus, 2)
+	return trace.Wrap(err)
+}
+
+// retryNewLeaderElected returns a retry function. Verifies that a new leader
+// has been elected.
+func retryNewLeaderElected(c *TestContext, cluster []Gravity, oldLeader Gravity) (retryFunc func() error) {
+	return func() error {
+		ctx, cancel := context.WithTimeout(c.ctx, c.timeouts.Status)
+		defer cancel()
+
+		newLeader, err := getLeaderNode(ctx, cluster)
+		if err != nil || newLeader == oldLeader {
+			return wait.Continue("new leader not yet elected")
+		}
+		return nil
+	}
+}
+
+// retryClusterIsActive returns a retry function. This function verifies that
+// the oldLeader and newLeader status are synchronized and that they are active.
+func retryClusterIsActive(c *TestContext, oldLeader, newLeader Gravity) (retryFunc func() error) {
+	return func() error {
+		var err error
+		var status [2]*GravityStatus
+
+		ctx, cancel := context.WithTimeout(c.ctx, c.timeouts.Status)
+		defer cancel()
+
 		status[0], err = newLeader.Status(ctx)
 		if err != nil {
 			return wait.Continue("status is unavailable on new leader: %v", err)
@@ -114,14 +127,12 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 			return wait.Continue("cluster status is not in sync")
 		}
 
-		// TODO: add Status.IsActive function
 		if status[0].Cluster.Status != StatusActive {
 			c.Logger().Warnf("cluster status is not active: %v", status[0])
 			return wait.Continue("cluster status is not active")
 		}
 		return nil
-	})
-	return trace.Wrap(err)
+	}
 }
 
 // getLeaderNode returns the current leader node.
@@ -140,4 +151,17 @@ func getLeaderNode(ctx context.Context, nodes []Gravity) (leader Gravity, err er
 		return nil, trace.NotFound("unable to get leader node")
 	}
 	return leader, nil
+}
+
+// getPartitions returns the two network partitions created when
+// isolating leader from the cluster.
+func getPartitions(cluster []Gravity, leader Gravity) (partitions [2][]Gravity) {
+	partitions[0] = []Gravity{leader}
+	for i, node := range cluster {
+		if node == leader {
+			partitions[1] = append(cluster[:i], cluster[i+1:]...)
+			break
+		}
+	}
+	return partitions
 }
