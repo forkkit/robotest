@@ -663,6 +663,10 @@ func (g *gravity) PartitionNetwork(ctx context.Context, cluster []Gravity) error
 func (g *gravity) UnpartitionNetwork(ctx context.Context, cluster []Gravity) error {
 	for _, node := range cluster {
 		if node != g {
+			cmdListRules := "sudo iptables -S"
+			if err := sshutils.Run(ctx, g.Client(), g.Logger(), cmdListRules, nil); err != nil {
+				return trace.Wrap(err, cmdListRules)
+			}
 			cmdAcceptInput := fmt.Sprintf("sudo iptables -D INPUT -s %s -j DROP", node.Node().PrivateAddr())
 			if err := sshutils.Run(ctx, g.Client(), g.Logger(), cmdAcceptInput, nil); err != nil {
 				return trace.Wrap(err, cmdAcceptInput)
