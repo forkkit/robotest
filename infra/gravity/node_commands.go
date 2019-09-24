@@ -658,6 +658,7 @@ func (g *gravity) PartitionNetwork(ctx context.Context, cluster []Gravity) error
 			}
 		}
 	}
+	g.Logger().Info("Partitioned Network")
 	return nil
 }
 

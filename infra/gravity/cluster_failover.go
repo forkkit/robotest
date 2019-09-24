@@ -48,6 +48,8 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 		return trace.Wrap(err, "failed to create network partition")
 	}
 
+	c.Logger().Info("getting partitions")
+
 	partitions := make([][]Gravity, 0, 2)
 	partitions[0] = []Gravity{oldLeader}
 	for i, node := range nodes {
