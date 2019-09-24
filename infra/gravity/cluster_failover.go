@@ -48,9 +48,7 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 		return trace.Wrap(err, "failed to create network partition")
 	}
 
-	c.Logger().Info("getting partitions")
-
-	partitions := make([][]Gravity, 0, 2)
+	partitions := make([][]Gravity, 2)
 	partitions[0] = []Gravity{oldLeader}
 	for i, node := range nodes {
 		if node == oldLeader {
@@ -100,15 +98,15 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 	}
 
 	err = retry.Do(ctx, func() error {
-		status := make([]*GravityStatus, 0, 2)
+		status := make([]*GravityStatus, 2)
 		status[0], err = newLeader.Status(ctx)
 		if err != nil {
-			return wait.Continue("status is unavailable on new leader", err)
+			return wait.Continue("status is unavailable on new leader: %v", err)
 		}
 
 		status[1], err = oldLeader.Status(ctx)
 		if err != nil {
-			return wait.Continue("status is unavailable on old leader", err)
+			return wait.Continue("status is unavailable on old leader: %v", err)
 		}
 
 		if status[0].Cluster.Status != status[1].Cluster.Status {
