@@ -3,11 +3,11 @@
 #
 
 # Use locally pre-fetched image
-resource "libvirt_volume" "os-qcow2" {
-  name    = "os-qcow2"
+resource "libvirt_volume" "os-img" {
+  name    = "os-img"
   pool    = "default"
-  source  = "/var/lib/libvirt/images/${var.image_name}"
-  format  = "qcow2"
+  source  = "/var/lib/libvirt/images/${lookup(var.os_images, var.os)}"
+  format  = "raw"
 }
 
 # Create a network for our VMs
@@ -18,20 +18,22 @@ resource "libvirt_network" "vm_network" {
 
 # Create main disk
 resource "libvirt_volume" "gravity" {
-  name            = "gravity-disk-${count.index}.qcow2"
-  base_volume_id  = libvirt_volume.os-qcow2.id
-  pool            = "default"
+  name            = "gravity-disk-${count.index}"
+  base_volume_id  = libvirt_volume.os-img.id
+  pool            = "${var.storage_pool}"
   size            = "${var.disk_size}"
   count           = "${var.nodes}"
 }
 
 # Use CloudInit to add our ssh-key to the instance
 resource "libvirt_cloudinit_disk" "commoninit" {
-  name      = "commoninit.iso"
-  user_data = "${templatefile("${path.module}/cloud_init.cfg", {
+  name      = "commoninit-${count.index}.iso"
+  user_data = "${templatefile("${path.module}/cloudinit/${split(":","${var.os}").0}.cfg", {
     ssh_pub_key = "${file(var.ssh_pub_key_path)}",
-    ssh_user = var.ssh_user 
+    ip_address = "172.28.128.${count.index+3}",
+    hostname = "gravity${count.index}"
   })}"
+  count = "${var.nodes}"
 }
 
 # Create the machine
@@ -39,8 +41,11 @@ resource "libvirt_domain" "domain-gravity" {
   name      = "gravity${count.index}"
   memory    = "${var.memory}"
   vcpu      = "${var.cpu}"
+  cpu       = {
+    mode = "host-passthrough"
+  }
   count     = "${var.nodes}"
-  cloudinit = "${libvirt_cloudinit_disk.commoninit.id}"
+  cloudinit = "${element(libvirt_cloudinit_disk.commoninit.*.id, count.index)}"
 
   network_interface {
     hostname        = "gravity${count.index}"
