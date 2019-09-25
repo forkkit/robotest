@@ -51,31 +51,23 @@ func (c *TestContext) Failover(cluster []Gravity) error {
 	partitions := getPartitions(cluster, oldLeader)
 	c.Logger().WithField("partitions", partitions).Info("Created network partition")
 
-	// Wait for new leader election
+	// Wait for cluster to become functional
 
 	c.Logger().Info("Waiting for new leader to be elected")
-	retry := wait.Retryer{
-		Attempts: leaderElectionRetries,
-		Delay:    leaderElectionWait,
+	if err := c.Status(partitions[1]); err != nil {
+		c.Logger().WithError(err).Error("Cluster partition is nonoperational")
+		return trace.Wrap(err, "cluster partition is nonoperational")
 	}
-	if err = retry.Do(ctx, retryNewLeaderElected(ctx, partitions[1])); err != nil {
-		c.Logger().WithError(err).Error("Failed to elect new leader")
-		return trace.Wrap(err, "new leader was not elected")
-	}
+	c.Logger().WithField("cluster", partitions[1]).Info("Cluster is functional")
+
+	// Get new leader node
+
 	newLeader, err := getLeaderNode(ctx, partitions[1])
 	if err != nil {
 		c.Logger().WithError(err).Error("Failed to get new leader")
 		return trace.Wrap(err)
 	}
 	c.Logger().WithField("leader", newLeader).Info("New leader elected")
-
-	// Verify cluster is still functional
-
-	if err := c.Status(partitions[1]); err != nil {
-		c.Logger().WithError(err).Error("Cluster partition is nonoperational")
-		return trace.Wrap(err, "cluster partition is nonoperational")
-	}
-	c.Logger().WithField("cluster", partitions[1]).Info("Cluster is functional")
 
 	// Remove network partition
 
@@ -87,7 +79,7 @@ func (c *TestContext) Failover(cluster []Gravity) error {
 
 	// Verify healthy cluster status
 
-	retry = wait.Retryer{
+	retry := wait.Retryer{
 		Attempts: activeStatusRetries,
 		Delay:    activeStatusWait,
 	}
@@ -134,7 +126,7 @@ func retryClusterIsActive(ctx context.Context, cluster []Gravity) (retryFunc fun
 		for _, s := range statuses {
 			status, ok := s.(*GravityStatus)
 			if !ok {
-				return trace.BadParameter("did not return GravityStatus: %v", s)
+				return trace.BadParameter("expected type GravityStatus, got %T", s)
 			}
 			if status.Cluster.Status != StatusActive {
 				return wait.Continue("cluster status is not active: %v", status)
