@@ -159,7 +159,8 @@ func getPartitions(cluster []Gravity, leader Gravity) (partitions [2][]Gravity) 
 	partitions[0] = []Gravity{leader}
 	for i, node := range cluster {
 		if node == leader {
-			partitions[1] = append(cluster[:i], cluster[i+1:]...)
+			partitions[1] = append(partitions[1], cluster[:i]...)
+			partitions[1] = append(partitions[1], cluster[i+1:]...)
 			break
 		}
 	}
