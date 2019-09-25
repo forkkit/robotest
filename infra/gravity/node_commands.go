@@ -658,9 +658,11 @@ func (g *gravity) PartitionNetwork(ctx context.Context, cluster []Gravity) error
 }
 
 // UnpartitionNetwork removes network partition between this gravity node and
-// the cluster. If a network partition does not already exist, this will have
-// no effect.
+// the cluster. Will fail if network partition does not already exist.
 func (g *gravity) UnpartitionNetwork(ctx context.Context, cluster []Gravity) error {
+	// TODO: `iptables -D ...` will fail with 'Bad rule (does a matching rule exist
+	// in that chain?)' when we attempt to delete a rule that doesn't exist. Either
+	// verify the rule exists beforehand or use a different command?
 
 	g.Logger().WithFields(logrus.Fields{
 		"cluster": cluster,
