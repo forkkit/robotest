@@ -624,6 +624,7 @@ func (g *gravity) RunInPlanet(ctx context.Context, cmd string, args ...string) (
 func (g *gravity) IsLeader(ctx context.Context) bool {
 	status, err := g.Status(ctx)
 	if err != nil {
+		g.Logger().Errorf("failed to get leader: %v", err)
 		return false
 	}
 	etcdLeaderKey := fmt.Sprintf("/planet/cluster/%s/master", status.Cluster.Cluster)
@@ -654,7 +655,7 @@ func (g *gravity) PartitionNetwork(ctx context.Context, cluster []Gravity) error
 			g.Logger().WithFields(logrus.Fields{
 				"dropInput":  cmdDropInput,
 				"dropOutput": cmdDropOutput,
-			}).Infof("Dropping packets to/from %s", node.Node().PrivateAddr())
+			}).Infof("%s Dropping packets to/from %s", g.Node().PrivateAddr(), node.Node().PrivateAddr())
 		}
 	}
 	return nil
@@ -667,16 +668,8 @@ func (g *gravity) UnpartitionNetwork(ctx context.Context, cluster []Gravity) err
 	// in that chain?)' when we attempt to delete a rule that doesn't exist. Either
 	// verify the rule exists beforehand or use a different command?
 
-	g.Logger().WithFields(logrus.Fields{
-		"cluster": cluster,
-		"g":       g,
-	}).Info("UnpartitionNetwork")
 	for _, node := range cluster {
 		if node != g {
-			cmdListRules := "sudo iptables -S"
-			if err := sshutils.Run(ctx, g.Client(), g.Logger(), cmdListRules, nil); err != nil {
-				return trace.Wrap(err, cmdListRules)
-			}
 			cmdAcceptInput := fmt.Sprintf("sudo iptables -D INPUT -s %s -j DROP", node.Node().PrivateAddr())
 			if err := sshutils.Run(ctx, g.Client(), g.Logger(), cmdAcceptInput, nil); err != nil {
 				return trace.Wrap(err, cmdAcceptInput)
@@ -688,7 +681,7 @@ func (g *gravity) UnpartitionNetwork(ctx context.Context, cluster []Gravity) err
 			g.Logger().WithFields(logrus.Fields{
 				"acceptInput":  cmdAcceptInput,
 				"acceptOutput": cmdAcceptOutput,
-			}).Infof("Accepting packets to/from %s", node.Node().PrivateAddr())
+			}).Infof("%s Accepting packets to/from %s", g.Node().PrivateAddr(), node.Node().PrivateAddr())
 		}
 	}
 	return nil
