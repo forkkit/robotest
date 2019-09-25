@@ -18,11 +18,10 @@ package gravity
 
 import (
 	"context"
+	"time"
 
 	"github.com/gravitational/robotest/lib/wait"
 	"github.com/gravitational/trace"
-
-	"github.com/sirupsen/logrus"
 )
 
 // Failover isolates the current leader node and elects a new leader node.
@@ -36,18 +35,14 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 	if err != nil {
 		return trace.Wrap(err)
 	}
-	c.Logger().WithFields(logrus.Fields{
-		"leader": oldLeader,
-	}).Info("Initial leader node")
+	c.Logger().WithField("leader", oldLeader).Info("Initial leader node")
 
 	if err := oldLeader.PartitionNetwork(ctx, nodes); err != nil {
 		return trace.Wrap(err, "failed to create network partition")
 	}
 
 	partitions := getPartitions(nodes, oldLeader)
-	c.Logger().WithFields(logrus.Fields{
-		"partitions": partitions,
-	}).Info("Created network partition")
+	c.Logger().WithField("partitions", partitions).Info("Created network partition")
 
 	retry := wait.Retryer{
 		Attempts: leaderElectionRetries,
@@ -56,42 +51,41 @@ func (c *TestContext) Failover(nodes []Gravity) error {
 	if err = retry.Do(ctx, retryNewLeaderElected(c, partitions[1], oldLeader)); err != nil {
 		return trace.Wrap(err, "new leader was not elected")
 	}
+
 	newLeader, err := getLeaderNode(ctx, partitions[1])
 	if err != nil {
 		return trace.Wrap(err)
 	}
-	c.Logger().WithFields(logrus.Fields{
-		"oldLeader": oldLeader,
-		"newLeader": newLeader,
-	}).Info("New leader elected")
+	c.Logger().WithField("leader", newLeader).Info("New leader elected")
 
 	if err := c.Status(partitions[1]); err != nil {
 		return trace.Wrap(err, "cluster partition is nonoperational")
 	}
-
-	c.Logger().WithFields(logrus.Fields{
-		"nodes": nodes,
-	}).Infof("Current cluster")
+	c.Logger().WithField("cluster", partitions[1]).Info("Cluster is functional")
 
 	if err := oldLeader.UnpartitionNetwork(ctx, nodes); err != nil {
 		return trace.Wrap(err, "failed to remove network partition")
 	}
-	c.Logger().Info("Removed network partition")
+	c.Logger().WithField("cluster", nodes).Info("Removed network partition")
 
 	retry = wait.Retryer{
 		Attempts: activeStatusRetries,
 		Delay:    activeStatusWait,
 	}
 	err = retry.Do(ctx, retryClusterIsActive(c, oldLeader, newLeader))
+	if err != nil {
+		return trace.Wrap(err, "cluster has not recovered healthy status")
+	}
+	c.Logger().Info("Cluster status is active")
 
-	return trace.Wrap(err)
+	return nil
 }
 
 // retryNewLeaderElected returns a retry function. Verifies that a new leader
 // has been elected.
 func retryNewLeaderElected(c *TestContext, cluster []Gravity, oldLeader Gravity) (retryFunc func() error) {
 	return func() error {
-		ctx, cancel := context.WithTimeout(c.ctx, c.timeouts.Status)
+		ctx, cancel := context.WithTimeout(c.ctx, time.Second*30)
 		defer cancel()
 
 		newLeader, err := getLeaderNode(ctx, cluster)
