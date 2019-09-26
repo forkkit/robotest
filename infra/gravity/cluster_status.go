@@ -25,6 +25,7 @@ func (c *TestContext) Status(nodes []Gravity) error {
 	}
 
 	err := retry.Do(ctx, func() error {
+		c.Logger().WithField("cluster", nodes).Info("Retry check status")
 		errs := make(chan error, len(nodes))
 
 		for _, node := range nodes {
@@ -38,7 +39,8 @@ func (c *TestContext) Status(nodes []Gravity) error {
 		if err == nil {
 			return nil
 		}
-		c.Logger().Warnf("Status not available on some nodes, will retry: %v.", err)
+		c.Logger().WithError(err).Warnf("Status not available on some nodes, will retry")
+		// c.Logger().Warnf("Status not available on some nodes, will retry: %v.", err)
 		return wait.Continue("status not ready on some nodes")
 	})
 

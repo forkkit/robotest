@@ -311,6 +311,7 @@ var installCmdTemplate = template.Must(
 func (g *gravity) Status(ctx context.Context) (*GravityStatus, error) {
 	cmd := "sudo gravity status --output=json --system-log-file=./telekube-system.log"
 	status := GravityStatus{}
+	g.Logger().WithField("node", g).Info("Getting node status")
 	err := sshutils.RunAndParse(ctx, g.Client(), g.Logger(), cmd, nil, parseStatus(&status))
 	if err != nil {
 		if exitErr, ok := trace.Unwrap(err).(sshutils.ExitStatusError); ok {
@@ -319,11 +320,12 @@ func (g *gravity) Status(ctx context.Context) (*GravityStatus, error) {
 				"addr":         g.Node().Addr(),
 				"command":      cmd,
 				"exit code":    exitErr.ExitStatus(),
-			}).Warn("Failed.")
+			}).Warn("Failed to get status")
 		}
 		return nil, trace.Wrap(err, cmd)
 
 	}
+	g.Logger().WithField("status", status).Info("Node status")
 
 	return &status, nil
 }
