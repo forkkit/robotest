@@ -93,18 +93,6 @@ func (c *TestContext) Failover(cluster []Gravity) error {
 	return nil
 }
 
-// retryNewLeaderElected returns a retry function. This function verifies that a
-// new leader has been elected.
-func retryNewLeaderElected(ctx context.Context, cluster []Gravity) (retryFunc func() error) {
-	return func() error {
-		_, err := getLeaderNode(ctx, cluster)
-		if err != nil {
-			return wait.Continue("new leader not yet elected: %v", err)
-		}
-		return nil
-	}
-}
-
 // retryClusterIsActive returns a retry function. This function verifies that
 // the cluster status is active.
 func retryClusterIsActive(ctx context.Context, cluster []Gravity) (retryFunc func() error) {
