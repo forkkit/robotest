@@ -22,7 +22,8 @@ ENV TF_PLUGINS \
     https://releases.hashicorp.com/terraform-provider-template/${TERRAFORM_PROVIDER_TEMPLATE_VERSION}/terraform-provider-template_${TERRAFORM_PROVIDER_TEMPLATE_VERSION}_linux_amd64.zip \
     https://releases.hashicorp.com/terraform-provider-random/${TERRAFORM_PROVIDER_RANDOM_VERSION}/terraform-provider-random_${TERRAFORM_PROVIDER_RANDOM_VERSION}_linux_amd64.zip
 
-RUN curl ${TF_TARBALL} -o terraform.zip && \
+RUN set -ex && \
+    curl ${TF_TARBALL} -o terraform.zip && \
     unzip terraform.zip -d /usr/bin && \
     rm -f terraform.zip && \
     mkdir -p /etc/terraform/plugins && \
@@ -39,7 +40,8 @@ RUN curl ${TF_TARBALL} -o terraform.zip && \
         /usr/share/{doc,doc-base,man}/ \
         /tmp/*
 
-RUN (curl https://get.gravitational.io/telekube/install/${GRAVITY_VERSION} | bash)
+RUN set -ex && \
+    (curl https://get.gravitational.io/telekube/install/${GRAVITY_VERSION} | bash)
 
 RUN mkdir /robotest
 WORKDIR /robotest

@@ -10,7 +10,7 @@ ENV TF_PLUGINS \
     https://releases.hashicorp.com/terraform-provider-aws/${TERRAFORM_PROVIDER_AWS_VERSION}/terraform-provider-aws_${TERRAFORM_PROVIDER_AWS_VERSION}_linux_amd64.zip
 ENV CHROMEDRIVER_TARBALL http://chromedriver.storage.googleapis.com/${CHROMEDRIVER_VERSION}/chromedriver_linux64.zip
 
-RUN \
+RUN set -ex && \
     apt-get update && \
     apt-get install -y curl gnupg2 dirmngr && \
     curl "https://dl-ssl.google.com/linux/linux_signing_key.pub" | apt-key add - && \
