@@ -15,7 +15,7 @@ variable "oss" {
     "ubuntu:20"     = "ubuntu-os-cloud/ubuntu-2004-focal-v20200423"
     "ubuntu:latest" = "ubuntu-os-cloud/ubuntu-2004-focal-v20200423"
     "redhat:7"      = "rhel-cloud/rhel-7-v20200420"
-    "redhat:8"      = "rhel-cloud/rhel-8-v20200413"
+    "redhat:8"      = "rhel-cloud/rhel-8-v20200521"
     "centos:7"      = "centos-cloud/centos-7-v20200420"
     "centos:8"      = "centos-cloud/centos-8-v20200413"
     "debian:8"      = "debian-cloud/debian-8-jessie-v20180611"
@@ -27,4 +27,3 @@ variable "oss" {
     "suse:latest"   = "suse-cloud/sles-15-sp1-v20200415"
   }
 }
-
